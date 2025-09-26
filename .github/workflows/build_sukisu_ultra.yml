@@ -249,7 +249,7 @@ jobs:
           make O=out $KERNEL_DEFCONFIG
           make -j$(nproc --all) O=out ARCH=arm64 CC="ccache clang" CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1
         env:
-          KERNEL_DEFCONFIG: "enchilada_defconfig"
+          KERNEL_DEFCONFIG: "gki_defconfig"
           ARCH: arm64
           SUBARCH: arm64
 
