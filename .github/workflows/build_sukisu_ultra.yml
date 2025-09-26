@@ -64,17 +64,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Maximize build space
-        uses: easimon/maximize-build-space@master
-        with:
-          root-reserve-mb: 8192
-          temp-reserve-mb: 2048
-          swap-size-mb: 8192
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-
       - name: Configure Git
         run: |
           git config --global user.name "Bruce Zhang"
@@ -82,7 +71,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt update && sudo apt upgrade -y
+          sudo apt update
           sudo apt-get install binutils make python3 libssl-dev build-essential bc bison flex unzip libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler git git-lfs wget gzip
 
       - name: Show selected inputs debug
@@ -109,17 +98,6 @@ jobs:
           ref: oneplus/mt6895_v_15.0.0_ace
           path: kernel_workspace/kernel_platform
 
-      # 删除 -dirty 后缀
-      - name: Force remove -dirty suffix
-        run: |
-          cd kernel_workspace/kernel_platform
-          sed -i 's/ -dirty//g' common/scripts/setlocalversion
-          sed -i 's/ -dirty//g' msm-kernel/scripts/setlocalversion
-          sed -i 's/ -dirty//g' external/dtc/scripts/setlocalversion
-          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' common/scripts/setlocalversion
-          git add -A
-          git commit -m "Force remove -dirty suffix from kernel version"
-
       # 添加 SukiSU Ultra
       - name: Add KernelSU-SukiSU Ultra
         run: |
@@ -138,16 +116,16 @@ jobs:
           git clone https://github.com/ShirkNeko/SukiSU_patch.git
           cd kernel_platform
           echo "正在给内核打susfs补丁"
-          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
-          cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
-          cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
+          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./
+          cp ../susfs4ksu/kernel_patches/fs/* ./fs/
+          cp ../susfs4ksu/kernel_patches/include/linux/* ./include/linux/
 
           if [ "${{ github.event.inputs.ZRAM }}" = "true" ]; then
           echo "正在给内核打zram补丁"
-          cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./common/include/linux
-          cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./common/lib
-          cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./common/crypto
-          cp -r ../SukiSU_patch/other/zram/lz4k_oplus ./common/lib/
+          cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./include/linux
+          cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./lib
+          cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./crypto
+          cp -r ../SukiSU_patch/other/zram/lz4k_oplus ./lib/
           fi
 
           cd ./common
@@ -163,7 +141,7 @@ jobs:
 
       - name: Apply VFS
         run: |
-          cd kernel_workspace/kernel_platform/common
+          cd kernel_workspace/kernel_platform
           if [ "${{ github.event.inputs.VFS }}" = "true" ]; then
           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
           echo "正在打vfs补丁"
@@ -185,7 +163,7 @@ jobs:
       - name: Add Configuration Settings
         run: |
           cd kernel_workspace/kernel_platform
-          CONFIG_FILE=./common/arch/arm64/configs/gki_defconfig
+          CONFIG_FILE=./arch/arm64/configs/gki_defconfig
           KERNEL_VERSION="${{ github.event.inputs.KERNEL_VERSION }}"
 
           # SukiSU Ultra config
