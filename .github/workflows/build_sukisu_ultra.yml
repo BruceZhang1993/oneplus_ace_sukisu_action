@@ -128,7 +128,6 @@ jobs:
           cp -r ../SukiSU_patch/other/zram/lz4k_oplus ./lib/
           fi
 
-          cd ./common
           patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
           echo "完成"
 
