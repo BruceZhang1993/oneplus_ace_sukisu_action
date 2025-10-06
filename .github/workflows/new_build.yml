@@ -1,0 +1,249 @@
+name: Build OnePlus Ace SukiSU Ultra kernel
+on:
+  workflow_dispatch:
+    inputs:
+      VFS:
+        type: boolean
+        description: "是否启用手动钩子"
+        required: true
+        default: true
+      KPM:
+        type: boolean
+        description: "是否启用KPM"
+        required: true
+        default: true
+      ZRAM:
+        type: boolean
+        description: "是否启用添加更多的ZRAM算法"
+        required: true
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 1024
+          swap-size-mb: 4096
+          remove-dotnet: true
+          remove-haskell: true
+          remove-docker-images: true
+          remove-android: true
+          remove-codeql: true
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "Bruce Zhang"
+          git config --global user.email "zttt183525594@gmail.com"
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt-get install binutils make python3 libssl-dev build-essential bc bison flex unzip libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler git git-lfs wget gzip lld
+
+      - name: Set up Python 2.7
+        uses: LizardByte/actions/actions/setup_python@master
+        with:
+          python-version: '2.7'
+
+      - name: 拉取 vendor
+        uses: actions/checkout@v4
+        with:
+          repository: OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6895
+          ref: oneplus/mt6895_v_15.0.0_ace
+          path: vendor_platform
+
+      - name: 拉取 kernel
+        uses: actions/checkout@v4
+        with:
+          repository: OnePlusOSS/android_kernel_5.10_oneplus_mt6895
+          ref: oneplus/mt6895_v_15.0.0_ace
+          path: vendor_platform/kernel-5.10
+
+      # 添加 SukiSU Ultra
+      - name: Add KernelSU-SukiSU Ultra
+        id: ksu_version
+        run: |
+          cd vendor_platform/kernel-5.10
+          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-main
+          cd ./KernelSU
+          KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
+          echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
+          echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_OUTPUT
+          export KSU_VERSION=$KSU_VERSION
+          sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
+
+      - name: Force remove -dirty suffix
+        run: |
+          cd vendor_platform/kernel-5.10
+          sed -i 's/ -dirty//g' scripts/setlocalversion
+          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' scripts/setlocalversion
+          git add -A
+          git commit -m "Force remove -dirty suffix from kernel version"
+
+      - name: Apply Patches SukiSU Ultra
+        run: |
+          cd vendor_platform
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android12-5.10
+          git clone https://github.com/ShirkNeko/SukiSU_patch.git
+          cd kernel-5.10
+          echo "正在给内核打susfs补丁"
+          cp ../susfs4ksu/kernel_patches/fs/* ./fs/
+          cp ../susfs4ksu/kernel_patches/include/linux/* ./include/linux/
+
+          if [ "${{ github.event.inputs.ZRAM }}" = "true" ]; then
+          echo "正在给内核打zram补丁"
+          cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./include/linux
+          cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./lib
+          cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./crypto
+          cp -r ../SukiSU_patch/other/zram/lz4k_oplus ./lib/
+          fi
+
+          patch -p1 < ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-android12-5.10.patch || true
+          echo "完成"
+
+      - name: Apply Hide Stuff Patches
+        run: |
+          cd vendor_platform/kernel-5.10
+          cp ../SukiSU_patch/69_hide_stuff.patch ./
+          echo "正在打隐藏应用补丁"
+          patch -p1 -F 3 < 69_hide_stuff.patch
+
+      - name: Apply VFS
+        run: |
+          cd vendor_platform/kernel-5.10
+          if [ "${{ github.event.inputs.VFS }}" = "true" ]; then
+          cp ../SukiSU_patch/hooks/syscall_hooks.patch ./
+          echo "正在打vfs补丁"
+          patch -p1 -F 3 < syscall_hooks.patch
+          echo "vfs_patch完成"
+          fi
+
+      - name: Apply LZ4KD
+        run: |
+          cd vendor_platform/kernel-5.10
+          if [ "${{ github.event.inputs.ZRAM }}" = "true" ]; then
+            cp ../SukiSU_patch/other/zram/zram_patch/5.10/lz4kd.patch ./
+            echo "正在打lz4kd补丁"
+            patch -p1 -F 3 < lz4kd.patch || true
+            echo '完成LZ4KD补丁'
+          fi
+
+      # 配置信息
+      - name: Add Configuration Settings
+        run: |
+          cd vendor_platform/kernel-5.10
+          CONFIG_FILE=./arch/arm64/configs/mgk_64_k510_defconfig
+          KERNEL_VERSION=5.10
+          # SukiSU Ultra config
+          echo "CONFIG_KSU=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KPM=y" >> "$CONFIG_FILE"
+          if [ "${{ github.event.inputs.VFS }}" = "false" ]; then
+          echo "CONFIG_KPROBES=y" >> "$CONFIG_FILE"
+          fi
+          # VFS config
+          if [ "${{ github.event.inputs.VFS }}" = "true" ]; then
+            echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> "$CONFIG_FILE"
+            echo "CONFIG_KSU_MANUAL_HOOK=y" >> "$CONFIG_FILE"
+          fi
+
+          if [ "${{ github.event.inputs.VFS }}" = "false" ]; then
+            echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> "$CONFIG_FILE"
+          fi
+
+          # SUSFS config
+          if [ "${{ github.event.inputs.VFS }}" = "true" ]; then
+          echo "CONFIG_KSU_SUSFS=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> "$CONFIG_FILE"
+          fi
+
+          # Remove check_defconfig
+          sed -i 's/check_defconfig//' ./build.config.gki
+
+          # LZ4KD配置
+          if [ "${{ github.event.inputs.ZRAM }}" = "true" ]; then
+          CONFIG_FILE=./arch/arm64/configs/mgk_64_k510_defconfig
+
+            echo "CONFIG_ZSMALLOC=y" >> "$CONFIG_FILE"
+            echo "CONFIG_ZRAM=y" >> "$CONFIG_FILE"
+            echo "CONFIG_MODULE_SIG=n" >> "$CONFIG_FILE"
+            echo "CONFIG_CRYPTO_LZO=y" >> "$CONFIG_FILE"
+            echo "CONFIG_ZRAM_DEF_COMP_LZ4KD=y" >> "$CONFIG_FILE"
+            rm "android/gki_aarch64_modules"
+            touch "android/gki_aarch64_modules"
+
+            if grep -q "CONFIG_ZSMALLOC=y" "$CONFIG_FILE" && grep -q "CONFIG_ZRAM=y" "$CONFIG_FILE"; then
+              echo "CONFIG_CRYPTO_LZ4HC=y" >> "$CONFIG_FILE"
+              echo "CONFIG_CRYPTO_LZ4K=y" >> "$CONFIG_FILE"
+              echo "CONFIG_CRYPTO_LZ4KD=y" >> "$CONFIG_FILE"
+              echo "CONFIG_CRYPTO_842=y" >> "$CONFIG_FILE"
+              echo "CONFIG_ZRAM_WRITEBACK=y" >> "$CONFIG_FILE"
+            fi
+          fi
+
+      - name: Get Clang and build tools
+        run: |
+          git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --revision b669748458572622ed716407611633c5415da25c --depth=1 vendor_platform/kernel/prebuilts-master/clang/host/linux-x86
+          git clone https://github.com/LineageOS/android_prebuilts_build-tools.git --depth=1 vendor_platform/kernel/prebuilts/build-tools
+      
+      - name: Build
+        run: |
+          export MAKE_GOALS=Image
+          cd vendor_platform
+          sed -i 's/^build_dt_cmd/#build_dt_cmd/g' kernel/build/oplus_build_kernel.sh
+          LTO=thin ./kernel/build/oplus_build_kernel.sh
+
+      - name: Make AnyKernel3
+        run: |
+          git clone https://github.com/Numbersf/AnyKernel3 --depth=1
+          rm -rf ./AnyKernel3/.git
+          sed -i 's/device.name1=maguro/device.name1=PGKM10/g' ./AnyKernel3/anykernel.sh
+          sed -i 's/device.name2=toro/device.name2=/g' ./AnyKernel3/anykernel.sh
+          sed -i 's/device.name3=toroplus/device.name3=/g' ./AnyKernel3/anykernel.sh
+          sed -i 's/device.name4=tuna/device.name4=/g' ./AnyKernel3/anykernel.sh
+          cp -f vendor_platform/out_krn/target/product/mgk_64_k510/obj/KERNEL_OBJ/kernel-5.10/arch/arm64/boot/Image ./AnyKernel3/Image
+
+      - name: Apply patch_linux and replace Image
+        if: ${{ github.event.inputs.KPM == 'true' }}
+        run: |
+          cd vendor_platform/out_krn/target/product/mgk_64_k510/obj/KERNEL_OBJ/kernel-5.10/arch/arm64/boot
+          curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch_linux
+          chmod +x patch_linux
+          ./patch_linux
+          rm -f Image
+          mv oImage Image
+          cp -f Image $GITHUB_WORKSPACE/AnyKernel3/Image
+
+      # 下载 SUSFS 模块（Release）
+      - name: Download Latest SUSFS Module from Release
+        run: |
+          wget https://github.com/sidex15/ksu_module_susfs/releases/latest/download/ksu_module_susfs_1.5.2+.zip
+          move ksu_module_susfs_1.5.2+.zip ksu_module_susfs_1.5.2+_Release.zip
+          cp ksu_module_susfs_1.5.2+_Release.zip ./AnyKernel3/
+
+      - name: Set suffix
+        id: suffix
+        run: |
+          echo "value=${{ github.event.inputs.KPM == 'true' && '_KPM' || '' }}${{ github.event.inputs.VFS == 'true' && '_VFS' || '' }}${{ github.event.inputs.ZRAM == 'true' && '_LZ4KD' || '' }}" >> $GITHUB_OUTPUT
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnyKernel3_SukiSUUltra_OnePlusAce_${{ steps.ksu_version.outputs.KSU_VERSION }}_${{ steps.suffix.outputs.value }}
+          path: ./AnyKernel3/*
