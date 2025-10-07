@@ -5,6 +5,10 @@
 当前内核版本号 `5.10.209` 最新内核版本号 `5.10.226`
 [Related issue](https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6895/issues/7)
 
+## Note
+
+Use at your own risk! 使用前请用 KernelFlasher 类似工具备份内核
+
 ## 支持特性  
 
 ### SukiSU Ultra
