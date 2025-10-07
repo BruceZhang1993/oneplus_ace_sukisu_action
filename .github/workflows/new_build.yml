@@ -181,10 +181,6 @@ jobs:
         run: |
           git clone https://github.com/Numbersf/AnyKernel3 --depth=1
           rm -rf ./AnyKernel3/.git
-          sed -i 's/device.name1=maguro/device.name1=PGKM10/g' ./AnyKernel3/anykernel.sh
-          sed -i 's/device.name2=toro/device.name2=/g' ./AnyKernel3/anykernel.sh
-          sed -i 's/device.name3=toroplus/device.name3=/g' ./AnyKernel3/anykernel.sh
-          sed -i 's/device.name4=tuna/device.name4=/g' ./AnyKernel3/anykernel.sh
           cp -f vendor_platform/out_krn/target/product/mgk_64_k510/obj/KERNEL_OBJ/kernel-5.10/arch/arm64/boot/Image ./AnyKernel3/Image
 
       - name: Apply patch_linux and replace Image
