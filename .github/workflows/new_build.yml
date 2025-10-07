@@ -234,7 +234,7 @@ jobs:
       - name: Download Latest SUSFS Module from Release
         run: |
           wget https://github.com/sidex15/ksu_module_susfs/releases/latest/download/ksu_module_susfs_1.5.2+.zip
-          move ksu_module_susfs_1.5.2+.zip ksu_module_susfs_1.5.2+_Release.zip
+          mv ksu_module_susfs_1.5.2+.zip ksu_module_susfs_1.5.2+_Release.zip
           cp ksu_module_susfs_1.5.2+_Release.zip ./AnyKernel3/
 
       - name: Set suffix
