@@ -15,11 +15,6 @@ on:
         description: "是否启用手动钩子"
         required: true
         default: false
-      KPM:
-        type: boolean
-        description: "是否启用KPM"
-        required: true
-        default: false
 
 jobs:
   build:
@@ -129,7 +124,6 @@ jobs:
           KERNEL_VERSION=5.10
           # SukiSU Ultra config
           echo "CONFIG_KSU=y" >> "$CONFIG_FILE"
-          echo "CONFIG_KPM=y" >> "$CONFIG_FILE"
           if [ "${{ github.event.inputs.VFS }}" = "false" ]; then
           echo "CONFIG_KPROBES=y" >> "$CONFIG_FILE"
           fi
@@ -172,27 +166,14 @@ jobs:
       
       - name: Build
         run: |
-          export MAKE_GOALS=Image
           cd vendor_platform
-          sed -i 's/^build_dt_cmd/#build_dt_cmd/g' kernel/build/oplus_build_kernel.sh
           LTO=thin ./kernel/build/oplus_build_kernel.sh
 
       - name: Make AnyKernel3
         run: |
           git clone https://github.com/Numbersf/AnyKernel3 --depth=1
           rm -rf ./AnyKernel3/.git
-          cp -f vendor_platform/out_krn/target/product/mgk_64_k510/obj/KERNEL_OBJ/kernel-5.10/arch/arm64/boot/Image ./AnyKernel3/Image
-
-      - name: Apply patch_linux and replace Image
-        if: ${{ github.event.inputs.KPM == 'true' }}
-        run: |
-          cd vendor_platform/out_krn/target/product/mgk_64_k510/obj/KERNEL_OBJ/kernel-5.10/arch/arm64/boot
-          curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU_patch/refs/heads/main/kpm/patch_linux" -o patch_linux
-          chmod +x patch_linux
-          ./patch_linux
-          rm -f Image
-          mv oImage Image
-          cp -f Image $GITHUB_WORKSPACE/AnyKernel3/Image
+          cp -f vendor_platform/out_krn/target/product/mgk_64_k510/obj/KERNEL_OBJ/kernel-5.10/arch/arm64/boot/Image.gz ./AnyKernel3/Image.gz
 
       # 下载 SUSFS 模块（Release）
       - name: Download Latest SUSFS Module from Release
@@ -204,7 +185,7 @@ jobs:
       - name: Set output name
         id: file_name
         run: |
-          echo "value=AnyKernel3_PKGM10_${{ github.event.inputs.VARIANT }}_${{ steps.ksu_version.outputs.KSU_VERSION }}${{ github.event.inputs.KPM == 'true' && '_KPM' || '' }}${{ github.event.inputs.VFS == 'true' && '_VFS' || '' }}" >> $GITHUB_OUTPUT
+          echo "value=AnyKernel3_PKGM10_${{ github.event.inputs.VARIANT }}_${{ steps.ksu_version.outputs.KSU_VERSION }}${{ github.event.inputs.VFS == 'true' && '_VFS' || '' }}" >> $GITHUB_OUTPUT
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
