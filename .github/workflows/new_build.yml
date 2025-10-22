@@ -36,16 +36,17 @@ jobs:
         run: |
           git config --global user.name "Bruce Zhang"
           git config --global user.email "zttt183525594@gmail.com"
+  
+      - name: Set up Python 2.7
+        uses: LizardByte/actions/actions/setup_python@master
+        with:
+          python-version: '2.7'
 
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt-get install binutils make python3 libssl-dev build-essential bc bison flex unzip libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler git git-lfs wget gzip lld
-
-      - name: Set up Python 2.7
-        uses: LizardByte/actions/actions/setup_python@master
-        with:
-          python-version: '2.7'
+          sudo pip install git+git://git.kernel.org/pub/scm/utils/dtc/dtc.git@main
 
       - name: 拉取 vendor
         uses: actions/checkout@v4
@@ -60,6 +61,11 @@ jobs:
           repository: OnePlusOSS/android_kernel_5.10_oneplus_mt6895
           ref: oneplus/mt6895_v_15.0.0_ace
           path: vendor_platform/kernel-5.10
+
+      - name: 拉取仓库
+        uses: actions/checkout@v4
+        with:
+          path: repo
 
       # 添加 SukiSU Ultra
       - name: Add KernelSU-SukiSU Ultra
@@ -167,7 +173,8 @@ jobs:
       - name: Build
         run: |
           cd vendor_platform
-          LTO=thin ./kernel/build/oplus_build_kernel.sh
+          cp ../repo/custom_build_kernel.sh ./kernel/build/custom_build_kernel.sh
+          LTO=thin ./kernel/build/custom_build_kernel.sh
 
       - name: Make AnyKernel3
         run: |
