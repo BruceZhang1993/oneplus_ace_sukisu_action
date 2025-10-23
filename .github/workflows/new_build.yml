@@ -46,7 +46,6 @@ jobs:
         run: |
           sudo apt update
           sudo apt-get install binutils make python3 libssl-dev build-essential bc bison flex unzip libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler git git-lfs wget gzip lld
-          sudo pip install git+git://git.kernel.org/pub/scm/utils/dtc/dtc.git@main
 
       - name: 拉取 vendor
         uses: actions/checkout@v4
@@ -172,6 +171,7 @@ jobs:
       
       - name: Build
         run: |
+          export MAKE_GOALS=Image
           cd vendor_platform
           cp ../repo/custom_build_kernel.sh ./kernel/build/custom_build_kernel.sh
           chmod +x ./kernel/build/custom_build_kernel.sh
@@ -181,6 +181,7 @@ jobs:
         run: |
           git clone https://github.com/Numbersf/AnyKernel3 --depth=1
           rm -rf ./AnyKernel3/.git
+          gzip -k vendor_platform/out_krn/target/product/mgk_64_k510/obj/KERNEL_OBJ/kernel-5.10/arch/arm64/boot/Image
           cp -f vendor_platform/out_krn/target/product/mgk_64_k510/obj/KERNEL_OBJ/kernel-5.10/arch/arm64/boot/Image.gz ./AnyKernel3/Image.gz
 
       # 下载 SUSFS 模块（Release）
