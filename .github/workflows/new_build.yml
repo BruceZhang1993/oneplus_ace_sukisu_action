@@ -186,6 +186,8 @@ jobs:
           cp ../repo/custom_build_kernel.sh ./kernel/build/custom_build_kernel.sh
           chmod +x ./kernel/build/custom_build_kernel.sh
           LTO=thin ./kernel/build/custom_build_kernel.sh
+          ./kernel/build/oplus_rebuild_img.sh || true
+          ls -la ${IMAGE_OUT}
 
       - name: Make AnyKernel3
         run: |
