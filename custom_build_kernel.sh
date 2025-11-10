@@ -51,7 +51,7 @@ function build_dt_cmd() {
         cp ${TOPDIR}/out_krn/target/product/${KRN_MGK}/obj/KERNEL_OBJ/kernel-${VERSION}/scripts ${KERNEL_OBJ}/kernel-${VERSION} -rf
         cp ${TOPDIR}/out_krn/target/product/${KRN_MGK}/obj/KERNEL_OBJ/kernel-${VERSION}/source ${KERNEL_OBJ}/kernel-${VERSION} -rf
         cp ${TOPDIR}/out_krn/target/product/${KRN_MGK}/obj/KERNEL_OBJ/kernel-${VERSION}/Makefile ${KERNEL_OBJ}/kernel-${VERSION}
-        OUT_DIR=../${RELATIVE_KERNEL_OBJ} BUILD_CONFIG=../${RELATIVE_KERNEL_OBJ}/build.config GOALS=dtbs ./kernel/build/build_kernel.sh mediatek/${dtb}.dtb
+        OUT_DIR=../${RELATIVE_KERNEL_OBJ} BUILD_CONFIG=../${RELATIVE_KERNEL_OBJ}/build.config GOALS=dtbs ./build/build_kernel.sh mediatek/${dtb}.dtb
         cat ${DEVICE_TREE_OUT}/mediatek/${dtb}.dtb > ${DEVICE_TREE_OUT}/mediatek/dtb
     done
 
@@ -63,7 +63,7 @@ function build_dt_cmd() {
         mk_dtboimg_cfg ${DEVICE_TREE_OUT}/mediatek/${dtbo} ${DEVICE_TREE_OUT}/dtboimg.cfg
         ${DRV_GEN}  ${DWS_SRC}/${dtbo}.dws ${DEVICE_TREE_OUT}/${dtbo} ${DEVICE_TREE_OUT}/${dtbo} cust_dtsi
         #we must use Relative path,then we build success,or will build fail
-        OUT_DIR=../${RELATIVE_KERNEL_OBJ} BUILD_CONFIG=../${RELATIVE_KERNEL_OBJ}/build.config GOALS=dtbs ./kernel/build/build_kernel.sh mediatek/${dtbo}.dtb
+        OUT_DIR=../${RELATIVE_KERNEL_OBJ} BUILD_CONFIG=../${RELATIVE_KERNEL_OBJ}/build.config GOALS=dtbs ./build/build_kernel.sh mediatek/${dtbo}.dtb
     done
 
     cd ${TOPDIR}
