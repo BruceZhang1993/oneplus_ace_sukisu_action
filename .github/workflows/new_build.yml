@@ -195,7 +195,6 @@ jobs:
           git clone https://github.com/Numbersf/AnyKernel3 --depth=1
           rm -rf ./AnyKernel3/.git
           cp -f vendor_platform/out_krn/target/product/mgk_64_k510/obj/KERNEL_OBJ/kernel-5.10/arch/arm64/boot/Image.gz ./AnyKernel3/
-          cp -f repo/dtbo.img ./AnyKernel3/
 
       # 下载 SUSFS 模块（Release）
       - name: Download Latest SUSFS Module from Release
