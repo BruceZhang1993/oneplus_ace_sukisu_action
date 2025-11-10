@@ -179,6 +179,14 @@ jobs:
           git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --revision b669748458572622ed716407611633c5415da25c --depth=1 vendor_platform/kernel/prebuilts-master/clang/host/linux-x86
           git clone https://github.com/LineageOS/android_prebuilts_build-tools.git --depth=1 vendor_platform/kernel/prebuilts/build-tools
       
+      - name: Fetch needed files
+        run: |
+          # Fetch dct tool
+          cd vendor_platform
+          mkdir -p vendor/mediatek/proprietary/tools/dct
+          cd vendor/mediatek/proprietary/tools/dct
+          git clone https://github.com/Mashopy/android_tools_dct.git python
+
       - name: Build
         run: |
           export MAKE_GOALS=Image
