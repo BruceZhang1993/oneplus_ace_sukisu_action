@@ -73,4 +73,4 @@ function build_dt_cmd() {
     cp ${DEVICE_TREE_OUT}/mediatek/oplus_signed/dtbo.img ${IMAGE_OUT}/
  }
 build_kernel_cmd
-build_dt_cmd
+#build_dt_cmd
