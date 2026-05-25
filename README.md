@@ -2,8 +2,7 @@
 
 使用 GitHub Actions 编译 OnePlus6 Ace SukiSU Ultra 内核，基于一加官方内核源代码
 
-当前内核版本号 `5.10.209` 最新内核版本号 `5.10.226`
-[Related issue](https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6895/issues/7)
+当前内核版本号 `5.10.226` 最新内核版本号 `5.10.236`
 
 ## Note
 
